@@ -1,0 +1,14 @@
+# API SEVER
+Flask==2.3.2
+Flask-Cors==4.0.0
+
+# ChatGLM2
+protobuf
+transformers==4.30.2
+cpm_kernels
+torch>=2.0
+sentencepiece
+accelerate
+
+# Data vaValidation
+pydantic==2.0.2
