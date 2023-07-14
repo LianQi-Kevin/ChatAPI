@@ -9,3 +9,6 @@ cpm_kernels
 torch>=2.0
 sentencepiece
 accelerate
+
+# Data vaValidation
+pydantic==2.0.2

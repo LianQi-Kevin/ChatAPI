@@ -1,11 +1,11 @@
 from typing import Literal, Any
 
-from pydantic import BaseModel, model_validator, conint
+from pydantic import BaseModel, model_validator, Field
 
 
 class RESTfulAPI(BaseModel):
     """将数据按照RESTful格式封装"""
-    code: conint(gt=100, lt=600)
+    code: int = Field(gt=100, lt=600)
     status: Literal["success", "fail", "error"]
     message: str = None
     data: Any = None
