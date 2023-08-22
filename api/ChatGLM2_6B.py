@@ -18,11 +18,14 @@ from transformers import AutoTokenizer, AutoModel
 
 from utils.api_utils import RESTfulAPI
 
-ChatGLM2 = Blueprint('ChatGLM2', __name__, url_prefix="/ChatGLM2")
+# ChatGLM2 = Blueprint('ChatGLM2', __name__, url_prefix="/ChatGLM2")
+ChatGLM2 = Blueprint('ChatGLM2', __name__, url_prefix="/")
 
 # Global Config
 with open("./config.json") as f:
-    MODEL_CONFIGS: dict = json.loads("".join(f.readlines()))["model"]
+    json_data: dict = json.loads("".join(f.readlines()))
+    MODEL_CONFIGS = json_data["model"]
+    SERVER_CONFIGS = json_data["server"]
 
 # CUDA DEVICE
 DEVICE = "cuda"
@@ -86,6 +89,11 @@ class ChatResponse(BaseModel):
     created: Optional[int] = Field(default_factory=lambda: int(time.time()))
     choices: List[ChatResponseChoice]
     usage: ChatResponseUsage
+
+
+class SimplifyResponse(BaseModel):
+    messages: List[ChatResponseChoice]
+    token_usage: int
 
 
 def ChatGLM_format(messages: List[ChatMessage]) -> Tuple[str, List[tuple]]:
@@ -154,20 +162,31 @@ def chat():
         completion_tokens = len(TOKENIZER(f"{response}", add_special_tokens=True)['input_ids'])
 
         # create response
+        if SERVER_CONFIGS.get("response_type", "openai") == "simplify":
+            response_data = SimplifyResponse(
+                messages=[{
+                    "index": 0,
+                    "message": {"role": "assistant", "content": response},
+                    "finish_reason": "stop"
+                }],
+                token_usage=prompt_tokens + completion_tokens
+            )
+        else:
+            response_data = ChatResponse(
+                id=MODEL_CONFIGS.get("name", "ChatGLM2-6B"),
+                object="chat.completion",
+                choices=[{
+                    "index": 0,
+                    "message": {"role": "assistant", "content": response},
+                    "finish_reason": "stop"
+                }],
+                usage={
+                    "prompt_tokens": prompt_tokens,
+                    "completion_tokens": completion_tokens,
+                    "total_tokens": prompt_tokens + completion_tokens
+                })
         api_response = RESTfulAPI(code=201, status="success",
-                                  data=ChatResponse(
-                                      id=MODEL_CONFIGS.get("name", "ChatGLM2-6B"),
-                                      object="chat.completion",
-                                      choices=[{
-                                          "index": 0,
-                                          "message": {"role": "assistant", "content": response},
-                                          "finish_reason": "stop"
-                                      }],
-                                      usage={
-                                          "prompt_tokens": prompt_tokens,
-                                          "completion_tokens": completion_tokens,
-                                          "total_tokens": prompt_tokens + completion_tokens
-                                      })).model_dump()
+                                  data=response_data).model_dump()
         return jsonify(api_response), 201
     except (ValidationError, ValueError) as e:
         print(e)
